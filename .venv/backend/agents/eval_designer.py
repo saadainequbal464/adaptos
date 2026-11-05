@@ -499,16 +499,9 @@ class EvaluationMethod(str, Enum):
     RUBRIC = "rubric"
 
 
-# Factory specs may declare `numeric_tolerance` (a valid schemas.CriterionMethod).
-# The eval plane grades it exactly like exact_match on numeric fields, so bridge it
-# to EXACT_MATCH instead of rejecting the whole specification.
-_FACTORY_METHOD_ALIASES: dict[str, EvaluationMethod] = {
-    "numeric_tolerance": EvaluationMethod.EXACT_MATCH,
-}
 _SUPPORTED_EVAL_METHODS: dict[str, EvaluationMethod] = {
     m.value: m for m in EvaluationMethod
 }
-_SUPPORTED_EVAL_METHODS.update(_FACTORY_METHOD_ALIASES)
 
 
 class ExactMatchConfig(FrozenContract):

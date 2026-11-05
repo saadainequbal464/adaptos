@@ -1327,7 +1327,18 @@ class ReplayAndLiveModelAdapter:
         for field_name, field_def in props.items():
             ftype = field_def.get("type", "string")
             if ftype == "string":
-                if "citation" in field_name.lower() and retrieved_snippet:
+                # Respect declared enum labels first (schema-constrained outputs
+                # would otherwise fail structured validation in the dry run).
+                enum_labels = field_def.get("enum") or []
+                if enum_labels:
+                    result[field_name] = str(enum_labels[0])
+                elif (
+                    any(
+                        w in field_name.lower()
+                        for w in ("citation", "reference", "source", "policy", "evidence", "excerpt")
+                    )
+                    and retrieved_snippet
+                ):
                     result[field_name] = retrieved_snippet
                 else:
                     result[field_name] = f"stub_{field_name}"
@@ -2714,7 +2725,14 @@ def build_deterministic_candidate_draft(
 
     if "citation.verification" in need_by_cap:
         cite_field = next(
-            (f.name for f in spec.outputs if "citation" in f.name.lower() or "source" in f.name.lower()),
+            (
+                f.name
+                for f in spec.outputs
+                if any(
+                    w in f.name.lower()
+                    for w in ("citation", "reference", "source", "policy", "evidence", "excerpt")
+                )
+            ),
             spec.outputs[0].name,
         )
         steps.append(

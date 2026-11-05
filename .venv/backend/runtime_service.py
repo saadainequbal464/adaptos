@@ -1526,7 +1526,10 @@ class ApplicationRuntimeManager:
                     )
                     inst.app_storage.provision_app_storage(
                         {
-                            "project_id": inst.project_run_id,
+                            # Match the builder AppRuntime's doc.ingest convention so
+                            # runtime provisioning and workflow execution never
+                            # disagree on resource metadata (conflict otherwise).
+                            "project_id": "adaptos-proj",
                             "app_id": fts_app_id,
                             "resources": [
                                 {
@@ -3553,9 +3556,13 @@ class RuntimeServiceSelfTestSuite(unittest.TestCase):
             sent["response_format"]["json_schema"]["name"],
             "refund_triage_schema",
         )
-        self.assertEqual(
-            sent["response_format"]["json_schema"]["schema"], schema
-        )
+        # The client emits the provider's strict structured-output form: every
+        # object carries additionalProperties=false and all properties required.
+        sent_schema = sent["response_format"]["json_schema"]["schema"]
+        self.assertEqual(sent_schema["type"], "object")
+        self.assertFalse(sent_schema.get("additionalProperties", True))
+        self.assertEqual(sorted(sent_schema["required"]), ["decision"])
+        self.assertIn("decision", sent_schema["properties"])
         self.assertEqual(
             [m["role"] for m in sent["messages"]],
             ["system", "user", "assistant", "user"],

@@ -71,7 +71,7 @@ from storage import StorageConfig, StorageError, StorageService
 try:
     from . import builder as _builder_mod
 except ImportError:
-    from agent import builder as _builder_mod  # type: ignore[no-redef]
+    from agents import builder as _builder_mod  # type: ignore[no-redef]
 
 ALLOWED_CODEGEN_IMPORTS = _builder_mod.ALLOWED_CODEGEN_IMPORTS
 AppRuntime = _builder_mod.AppRuntime
@@ -3043,7 +3043,18 @@ def _build_seeded_bug_environment(
         expected_output={"decision": "approve_refund", "policy_citation": "30 calendar days"},
         criterion_ids=("ac_decision", "ac_citation"),
     )
-    asyncio.run(engine.build_application(state, [preflight_case, *dev_cases], assets=assets))
+    import asyncio as _asyncio
+    try:
+        _loop = _asyncio.get_running_loop()
+    except RuntimeError:
+        _loop = None
+    if _loop is not None:
+        import concurrent.futures as _cf
+        with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
+            _future = _pool.submit(_asyncio.run, engine.build_application(state, [preflight_case, *dev_cases], assets=assets))
+            _future.result()
+    else:
+        asyncio.run(engine.build_application(state, [preflight_case, *dev_cases], assets=assets))
     return storage, engine, spec, state, dev_cases, assets
 
 
@@ -3055,7 +3066,17 @@ class RepairAgentTestSuite(unittest.IsolatedAsyncioTestCase):
         self.tmp_path = Path(self._tmp.name)
 
     def tearDown(self) -> None:
-        self._tmp.cleanup()
+        import sqlite3 as _sqlite3
+        for _db in Path(self._tmp.name).rglob("*.db"):
+            try:
+                with _sqlite3.connect(str(_db), timeout=2.0) as _c:
+                    _c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            except Exception:
+                pass
+        try:
+            self._tmp.cleanup()
+        except PermissionError:
+            pass
 
     def test_01_json_pointer_parsing_and_strict_allowlisting(self) -> None:
         """Tests RFC 6901 JSON Pointer parsing, nested fn_config allowlisting, and rejection of

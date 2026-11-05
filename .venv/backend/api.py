@@ -1368,7 +1368,18 @@ class ApiBackendSelfTestSuite(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = val
-        self._tmp.cleanup()
+        # Checkpoint open SQLite WAL files so Windows releases locks before cleanup.
+        import sqlite3 as _sqlite3
+        for _db in self.tmp_path.rglob("*.db"):
+            try:
+                with _sqlite3.connect(str(_db), timeout=2.0) as _c:
+                    _c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            except Exception:
+                pass
+        try:
+            self._tmp.cleanup()
+        except PermissionError:
+            pass
 
     def _auth_headers(self, token: str | None = None) -> dict[str, str]:
         active = token if token is not None else self.TEST_API_KEY
