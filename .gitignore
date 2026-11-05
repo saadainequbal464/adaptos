@@ -1,0 +1,33 @@
+# Python virtualenv packages (project code inside .venv is whitelisted below)
+.venv/*
+!.venv/backend/
+!.venv/eval_plane/
+!.venv/frontend/
+
+# Runtime data, databases, caches
+.venv/data/
+.venv/backend/agnos_data/
+.venv/backend/agnos_runtime_data/
+**/__pycache__/
+*.pyc
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+
+# Frontend build artifacts & deps
+.venv/frontend/node_modules/
+.venv/frontend/dist/
+.venv/frontend/.vite/
+
+# OS / editor
+.vscode/
+Thumbs.db
+.DS_Store
+
+# Env files with secrets
+.env
+.env.eval
+*.env.local
+node_modules/
+package-lock.json
